@@ -13,5 +13,6 @@ in {
     buffers
     hlint
     haskell-language-server
-    showable;
+    showable
+    utf8-text;
 }

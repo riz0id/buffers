@@ -18,6 +18,7 @@ module Data.Buffer.Unsafe
   ( -- * Basic Operations
     unsafeShrink
     -- * Index
+  , unsafeIndexChar
   , unsafeIndexWord8
   , unsafeIndexWord16
   , unsafeIndexWord32
@@ -32,7 +33,7 @@ import Control.Monad.Primitive (RealWorld)
 import Data.Buffer.Core (Buffer (..))
 import Data.Primitive.ByteArray (MutableByteArray (..), shrinkMutableByteArray)
 
-import GHC.Exts (Int (..), MutableByteArray#)
+import GHC.Exts (Int (..), MutableByteArray#, Char (..))
 import GHC.Exts qualified as GHC
 import GHC.IO (IO (..))
 import GHC.Word (Word16 (..), Word32 (..), Word8 (..))
@@ -51,6 +52,14 @@ unsafeShrink :: Buffer -> Int -> IO ()
 unsafeShrink = shrinkMutableByteArray . getBuffer 
 
 -- Index -----------------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+unsafeIndexChar :: Buffer -> Int -> IO Char
+unsafeIndexChar (getBuffer# -> src#) (I# i#) =
+  IO \st0# -> case GHC.readCharArray# src# i# st0# of
+    (# st1#, x# #) -> (# st1#, C# x# #)
 
 -- | TODO: docs
 --

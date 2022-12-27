@@ -56,6 +56,7 @@ library
     , array-exceptions 
     , primitive
     , template-haskell >= 2.18.0 && < 2.19
+    , utf8-text
 
   exposed-modules:
     Data.Buffer

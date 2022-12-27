@@ -24,6 +24,8 @@ module Data.Buffer
   , length
   , null
   , pointer
+    -- * Compare 
+  , compareStringUtf8
     -- * Index
   , indexWord8
   , indexWord16
@@ -44,7 +46,7 @@ import Data.Buffer.Unsafe
   , unsafeIndexWord8
   , unsafeWriteWord16
   , unsafeWriteWord32
-  , unsafeWriteWord8, unsafeShrink
+  , unsafeWriteWord8, unsafeShrink, unsafeIndexChar
   )
 import Data.Primitive
   (getSizeofMutableByteArray, mutableByteArrayContents, newPinnedByteArray)
@@ -54,6 +56,8 @@ import Data.Word (Word16, Word32, Word8)
 import Language.Haskell.TH (Name)
 
 import Prelude hiding (length, null)
+import Control.Monad (when)
+import qualified Data.Utf8 as Utf8
 
 --------------------------------------------------------------------------------
 
@@ -117,10 +121,80 @@ null = fmap (0 ==) . length
 pointer :: Buffer -> Ptr Word8 
 pointer = mutableByteArrayContents . getBuffer
 
+-- Buffer - Compare ------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+compareString ::
+  -- | TODO: docs
+  Buffer -> 
+  -- | TODO: docs
+  String -> 
+  -- | TODO: docs
+  Int -> 
+  -- | TODO: docs
+  IO Bool 
+compareString buffer str off = do
+  len <- length buffer 
+
+  when (off < 0 || off >= len) do
+    throwIndexErrorIO 'compareString off (len - 1)
+
+  let iter :: Int -> String -> IO Bool
+      iter _ "" = pure True 
+      iter i (ch0 : cs) 
+        | i > len   = pure False 
+        | otherwise = do 
+          ch1 <- indexChar buffer i 
+          if ch0 == ch1 
+            then iter (1 + i) cs 
+            else pure False
+   in iter off str
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+compareStringUtf8 :: 
+  -- | TODO: docs
+  Buffer -> 
+  -- | TODO: docs
+  String -> 
+  -- | TODO: docs
+  Int -> 
+  -- | TODO: docs
+  IO Bool 
+compareStringUtf8 buffer str off = do 
+  len <- length buffer
+
+  when (off < 0 || off >= len) do
+    throwIndexErrorIO 'compareStringUtf8 off (len - 1)
+
+  let iter :: Int -> String -> IO Bool
+      iter _ "" = pure True 
+      iter i (ch0 : cs) 
+        | i > len   = pure False 
+        | otherwise = do 
+          (ch1, n) <- Utf8.readUtf8Array (getBuffer buffer) i
+          if ch0 == ch1 
+            then iter (i + n) cs 
+            else pure False
+   in iter off str
+
 -- Buffer - Index --------------------------------------------------------------
 
 throwIndexErrorIO :: Name -> Int -> Int -> IO a
 throwIndexErrorIO func i = throwIO . RangeError func ''Buffer Nothing i 0
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+indexChar :: Buffer -> Int -> IO Char
+indexChar buffer i = do 
+  len <- length buffer 
+  if 0 <= i && i < len 
+    then unsafeIndexChar buffer i
+    else throwIndexErrorIO 'indexChar i (len - 1)
 
 -- | Read a 'Word8' from a
 --
