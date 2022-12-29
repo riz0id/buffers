@@ -48,6 +48,10 @@ shrink :: Buffer -> Int -> IO ()
 shrink (B# buffer#) (I# i#) = IO \st# -> (# Prim.shrink# buffer# i# st#, () #)
 {-# INLINE shrink #-}
 
+-- | TODO: docs
+--
+-- @since 1.0.0
+
 -- Index -----------------------------------------------------------------------
 
 -- | TODO: docs
