@@ -27,6 +27,8 @@ module Data.Buffer
   , compareString
   , compareStringUtf8
     -- * Index
+  , indexChar
+  , indexUtf8
   , indexWord8
   , indexWord16
   , indexWord32
@@ -162,6 +164,17 @@ indexChar buffer i = do
     then Unsafe.indexChar buffer i
     else throwRangeErrorIO 'indexChar i (len - 1)
 {-# INLINE indexChar #-}
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+indexUtf8 :: Buffer -> Int -> IO Char
+indexUtf8 buffer i = do
+  len <- length buffer
+  if 0 <= i && i < len
+    then fmap fst (Unsafe.indexUtf8 buffer i)
+    else throwRangeErrorIO 'indexUtf8 i (len - 1)
+{-# INLINE indexUtf8 #-}
 
 -- | TODO: docs
 --
