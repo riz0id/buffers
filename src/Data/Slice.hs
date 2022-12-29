@@ -36,7 +36,7 @@ import Data.Primitive.ByteArray
   , MutableByteArray (MutableByteArray)
   , copyMutableByteArray
   , newPinnedByteArray
-  , unsafeFreezeByteArray
+  , unsafeFreezeByteArray, fillByteArray
   )
 import Data.Slice.Core (Slice (..))
 
@@ -89,6 +89,7 @@ toMutableByteArray slx = do
   let off = slice_begin slx
   let len = length slx
   dst <- newPinnedByteArray len
+  fillByteArray dst 0 len 0
   copyMutableByteArray dst 0 src off len
   pure dst
   where
