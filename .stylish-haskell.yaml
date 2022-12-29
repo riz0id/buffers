@@ -470,9 +470,14 @@ newline: native
 # needs to be aware of these, so it can parse the file correctly.
 #
 # No language extensions are enabled by default.
-# language_extensions:
-  # - TemplateHaskell
-  # - QuasiQuotes
+language_extensions:
+  - BlockArguments
+  - GADTs
+  - MagicHash
+  - QuasiQuotes
+  - TemplateHaskell
+  - UnboxedTuples
+  - UnliftedNewtypes
 
 # Attempt to find the cabal file in ancestors of the current directory, and
 # parse options (currently only language extensions) from that.

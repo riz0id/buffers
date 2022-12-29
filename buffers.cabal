@@ -40,7 +40,7 @@ common common
     -ddump-simpl
     -dppr-cols=120
     -dsuppress-module-prefixes
-    -dsuppress-uniques
+    -- -dsuppress-uniques
 
   build-depends:
     , base >= 4.16.3 && < 4.17
@@ -50,17 +50,22 @@ library
   hs-source-dirs: src
 
   ghc-options:
-    -j2
+    -O2
+    -fmax-simplifier-iterations=20
+    -fregs-iterative
+    -j4
 
   build-depends:
     , array-exceptions 
     , primitive
+    , prim-bool 
     , template-haskell >= 2.18.0 && < 2.19
     , utf8-text
 
   exposed-modules:
     Data.Buffer
     Data.Buffer.IO
+    Data.Buffer.Prim
     Data.Buffer.Unsafe
     Data.Slice
 

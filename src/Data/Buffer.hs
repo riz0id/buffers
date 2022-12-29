@@ -19,12 +19,12 @@ module Data.Buffer
     -- * Basic Operations
   , allocate
   , shrink
-  , withBufferPtr
     -- * Query
   , length
   , null
   , pointer
-    -- * Compare 
+    -- * Compare
+  , compareString
   , compareStringUtf8
     -- * Index
   , indexWord8
@@ -36,33 +36,16 @@ module Data.Buffer
   , writeWord32
   ) where
 
-import Control.Exception (throwIO)
-import Control.Exception.RangeError (RangeError (..))
-
-import Data.Buffer.Core (Buffer (..))
-import Data.Buffer.Unsafe
-  ( unsafeIndexWord16
-  , unsafeIndexWord32
-  , unsafeIndexWord8
-  , unsafeWriteWord16
-  , unsafeWriteWord32
-  , unsafeWriteWord8, unsafeShrink, unsafeIndexChar
-  )
-import Data.Primitive
-  (getSizeofMutableByteArray, mutableByteArrayContents, newPinnedByteArray)
-import Data.Primitive.Ptr (Ptr)
+import Data.Bool.Prim qualified as Bool
+import Data.Buffer.Core (Buffer (..), pointer, throwRangeErrorIO)
+import Data.Buffer.Prim qualified as Prim
+import Data.Buffer.Unsafe qualified as Unsafe
 import Data.Word (Word16, Word32, Word8)
 
-import Language.Haskell.TH (Name)
+import GHC.Exts (Int (..))
+import GHC.IO (IO (..))
 
 import Prelude hiding (length, null)
-import Control.Monad (when)
-import qualified Data.Utf8 as Utf8
-
---------------------------------------------------------------------------------
-
-throwRangeError :: Name -> Int -> Int -> Int -> IO ()
-throwRangeError func idx low high = throwIO (RangeError func ''Buffer Nothing idx low high)
 
 -- Buffer - Basic Operations ---------------------------------------------------
 
@@ -70,56 +53,46 @@ throwRangeError func idx low high = throwIO (RangeError func ''Buffer Nothing id
 --
 -- @since 1.0.0
 allocate :: Int -> IO Buffer
-allocate = fmap Buffer . newPinnedByteArray
-
--- | TODO: docs
---
--- @since 1.0.0
--- resize :: Buffer -> IO ()
--- resize = _
+allocate size@(I# size#)
+  | 0 <= size = do
+    IO \st0# -> case Prim.allocate# size# st0# of
+      (# st1#, buffer# #) -> (# st1#, B# buffer# #)
+  | otherwise = do
+    -- FIXME: canonicalize this error
+    let desc = "allocate: argument #1 must be a 'Int' greater than or equal to 0, got: " ++ show size
+    errorWithoutStackTrace desc
+{-# INLINE allocate #-}
 
 -- | TODO: docs
 --
 -- @since 1.0.0
 shrink :: Buffer -> Int -> IO ()
-shrink buffer n = do 
-  len <- length buffer 
-  if 0 <= n && n < len 
-    then unsafeShrink buffer n 
-    else throwRangeError 'shrink n 0 len
-
--- | TODO: docs
---
--- @since 1.0.0
-withBufferPtr :: Buffer -> (Ptr Word8 -> IO a) -> IO a
-withBufferPtr buffer k = k (pointer buffer)
-
--- Buffer - Comparison ---------------------------------------------------------
-
--- | TODO: docs
---
--- @since 1.0.0
-
+shrink buffer n = do
+  len <- length buffer
+  if 0 <= n && n < len
+    then Unsafe.shrink buffer n
+    else throwRangeErrorIO 'shrink n len
+{-# INLINE shrink #-}
 
 -- Buffer - Query --------------------------------------------------------------
 
--- | TODO: docs
+-- | \(\mathcal{O}(1)\). Obtain the length of the 'Buffer' in 8-bit words.
 --
 -- @since 1.0.0
 length :: Buffer -> IO Int
-length = getSizeofMutableByteArray . getBuffer
+length (B# buffer#) = IO \st0# -> 
+  case Prim.length# buffer# st0# of
+    (# st1#, len# #) -> (# st1#, I# len# #)
+{-# INLINE length #-}
 
--- | TODO: docs
+-- | \(\mathcal{O}(1)\). Test if the given 'Buffer' has a 'length' of zero.
 --
 -- @since 1.0.0
 null :: Buffer -> IO Bool
-null = fmap (0 ==) . length
-
--- | TODO: docs
---
--- @since 1.0.0
-pointer :: Buffer -> Ptr Word8 
-pointer = mutableByteArrayContents . getBuffer
+null (B# buffer#) = IO \st0# -> 
+  case Prim.null# buffer# st0# of
+    (# st1#, x# #) -> (# st1#, Bool.toBool x# #)
+{-# INLINE null #-}
 
 -- Buffer - Compare ------------------------------------------------------------
 
@@ -128,83 +101,78 @@ pointer = mutableByteArrayContents . getBuffer
 -- @since 1.0.0
 compareString ::
   -- | TODO: docs
-  Buffer -> 
+  Buffer ->
   -- | TODO: docs
-  String -> 
+  String ->
   -- | TODO: docs
-  Int -> 
+  Int ->
   -- | TODO: docs
-  IO Bool 
-compareString buffer str off = do
-  len <- length buffer 
-
-  when (off < 0 || off >= len) do
-    throwIndexErrorIO 'compareString off (len - 1)
-
-  let iter :: Int -> String -> IO Bool
-      iter _ "" = pure True 
-      iter i (ch0 : cs) 
-        | i > len   = pure False 
-        | otherwise = do 
-          ch1 <- indexChar buffer i 
-          if ch0 == ch1 
-            then iter (1 + i) cs 
-            else pure False
-   in iter off str
+  IO Bool
+compareString buffer str off 
+  | off < 0   = pure False 
+  | otherwise = do
+    len <- length buffer
+    let iter :: Int -> String -> IO Bool
+        iter _ "" = pure True
+        iter i (ch0 : cs)
+          | i > len   = pure False
+          | otherwise = do
+            ch1 <- indexChar buffer i
+            if ch0 == ch1
+              then iter (1 + i) cs
+              else pure False
+     in iter off str
 
 -- | TODO: docs
 --
 -- @since 1.0.0
-compareStringUtf8 :: 
+compareStringUtf8 ::
   -- | TODO: docs
-  Buffer -> 
+  Buffer ->
   -- | TODO: docs
-  String -> 
+  String ->
   -- | TODO: docs
-  Int -> 
+  Int ->
   -- | TODO: docs
-  IO Bool 
-compareStringUtf8 buffer str off = do 
-  len <- length buffer
-
-  when (off < 0 || off >= len) do
-    throwIndexErrorIO 'compareStringUtf8 off (len - 1)
-
-  let iter :: Int -> String -> IO Bool
-      iter _ "" = pure True 
-      iter i (ch0 : cs) 
-        | i > len   = pure False 
-        | otherwise = do 
-          (ch1, n) <- Utf8.readUtf8Array (getBuffer buffer) i
-          if ch0 == ch1 
-            then iter (i + n) cs 
-            else pure False
-   in iter off str
+  IO Bool
+compareStringUtf8 buffer str off 
+  | off < 0   = pure False 
+  | otherwise = do
+    len <- length buffer
+    let iter :: Int -> String -> IO Bool
+        iter _ "" = pure True
+        iter i (ch0 : cs)
+          | i > len   = pure False
+          | otherwise = do
+            (ch1, n) <- Unsafe.indexUtf8 buffer i
+            if ch0 == ch1
+              then iter (i + n) cs
+              else pure False
+     in iter off str
 
 -- Buffer - Index --------------------------------------------------------------
-
-throwIndexErrorIO :: Name -> Int -> Int -> IO a
-throwIndexErrorIO func i = throwIO . RangeError func ''Buffer Nothing i 0
 
 -- | TODO: docs
 --
 -- @since 1.0.0
 indexChar :: Buffer -> Int -> IO Char
-indexChar buffer i = do 
-  len <- length buffer 
-  if 0 <= i && i < len 
-    then unsafeIndexChar buffer i
-    else throwIndexErrorIO 'indexChar i (len - 1)
+indexChar buffer i = do
+  len <- length buffer
+  if 0 <= i && i < len
+    then Unsafe.indexChar buffer i
+    else throwRangeErrorIO 'indexChar i (len - 1)
+{-# INLINE indexChar #-}
 
--- | Read a 'Word8' from a
+-- | TODO: docs
 --
 -- @since 1.0.0
 indexWord8 :: Buffer -> Int -> IO Word8
 indexWord8 buffer i = do
   len <- length buffer
   if 0 <= i && i < len
-    then unsafeIndexWord8 buffer i
-    else throwIndexErrorIO 'indexWord8 i (len - 1)
+    then Unsafe.indexWord8 buffer i
+    else throwRangeErrorIO 'indexWord16 i (len - 2)
+{-# INLINE indexWord8 #-}
 
 -- | TODO: docs
 --
@@ -213,8 +181,9 @@ indexWord16 :: Buffer -> Int -> IO Word16
 indexWord16 buffer i = do
   len <- length buffer
   if 0 <= i && i < len - 1
-    then unsafeIndexWord16 buffer i
-    else throwIndexErrorIO 'indexWord16 i (len - 2)
+    then Unsafe.indexWord16 buffer i
+    else throwRangeErrorIO 'indexWord16 i (len - 2)
+{-# INLINE indexWord16 #-}
 
 -- | TODO: docs
 --
@@ -223,8 +192,9 @@ indexWord32 :: Buffer -> Int -> IO Word32
 indexWord32 buffer i = do
   len <- length buffer
   if 0 <= i && i < len - 3
-    then unsafeIndexWord32 buffer i
-    else throwIndexErrorIO 'indexWord32 i (len - 4)
+    then Unsafe.indexWord32 buffer i
+    else throwRangeErrorIO 'indexWord32 i (len - 4)
+{-# INLINE indexWord32 #-}
 
 -- Buffer - Write --------------------------------------------------------------
 
@@ -235,8 +205,9 @@ writeWord8 :: Buffer -> Int -> Word8 -> IO ()
 writeWord8 buffer i x = do
   len <- length buffer
   if 0 <= i && i < len
-    then unsafeWriteWord8 buffer i x
-    else throwIndexErrorIO 'writeWord8 i (len - 1)
+    then Unsafe.writeWord8 buffer i x
+    else throwRangeErrorIO 'writeWord8 i (len - 1)
+{-# INLINE writeWord8 #-}
 
 -- | TODO: docs
 --
@@ -245,8 +216,9 @@ writeWord16 :: Buffer -> Int -> Word16 -> IO ()
 writeWord16 buffer i x = do
   len <- length buffer
   if 0 <= i && i < len - 1
-    then unsafeWriteWord16 buffer i x
-    else throwIndexErrorIO 'writeWord16 i (len - 2)
+    then Unsafe.writeWord16 buffer i x
+    else throwRangeErrorIO 'writeWord16 i (len - 2)
+{-# INLINE writeWord16 #-}
 
 -- | TODO: docs
 --
@@ -255,6 +227,7 @@ writeWord32 :: Buffer -> Int -> Word32 -> IO ()
 writeWord32 buffer i x = do
   len <- length buffer
   if 0 <= i && i < len - 1
-    then unsafeWriteWord32 buffer i x
-    else throwIndexErrorIO 'writeWord32 i (len - 4)
+    then Unsafe.writeWord32 buffer i x
+    else throwRangeErrorIO 'writeWord32 i (len - 4)
+{-# INLINE writeWord32 #-}
 

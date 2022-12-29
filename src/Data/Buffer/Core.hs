@@ -1,3 +1,5 @@
+{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
 -- |
 -- Module      :  Data.Buffer.Core
@@ -13,26 +15,46 @@
 -- @since 1.0.0
 module Data.Buffer.Core
   ( Buffer (..)
+  , pointer
+  , throwRangeErrorIO
   ) where
 
-import Control.Monad.Primitive (RealWorld)
+import Control.Exception (throwIO)
+import Control.Exception.RangeError (RangeError (..))
 
-import Data.Primitive (MutableByteArray (..), mutableByteArrayContents)
-import Data.Primitive.Ptr (Ptr)
+import Data.Buffer.Prim (Buffer#)
+import Data.Buffer.Prim qualified as Prim
 import Data.Word (Word8)
+
+import GHC.Ptr (Ptr (..))
+
+import Language.Haskell.TH (Name)
 
 --------------------------------------------------------------------------------
 
 -- | TODO: docs
 --
 -- @since 1.0.0
-newtype Buffer
-  = Buffer { getBuffer :: MutableByteArray RealWorld }
+data Buffer = B# Buffer#
 
 -- | @since 1.0.0
 instance Show Buffer where
-  showsPrec p buffer =
-    let ptr :: Ptr Word8
-        ptr = mutableByteArrayContents (getBuffer buffer)
-     in showString "<Buffer: " . showsPrec p ptr . showString ">"
+  show x = "<Buffer: " ++ show (pointer x) ++ show ">"
+  {-# INLINE show #-}
+
+  showsPrec _ x = showString "<Buffer: " . shows (pointer x) . showString ">"
   {-# INLINE showsPrec #-}
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+pointer :: Buffer -> Ptr Word8
+pointer (B# buffer#) = Ptr (Prim.pointer# buffer#)
+{-# INLINE pointer #-}
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+throwRangeErrorIO :: Name -> Int -> Int -> IO a
+throwRangeErrorIO fun idx len = throwIO (RangeError fun ''Buffer Nothing idx 0 len)
+{-# INLINE CONLIKE throwRangeErrorIO #-}
