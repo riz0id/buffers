@@ -18,6 +18,7 @@ module Data.Buffer
   ( Buffer (..)
     -- * Basic Operations
   , allocate
+  , fromString
   , shrink
     -- * Query
   , length
@@ -33,6 +34,7 @@ module Data.Buffer
   , indexWord16
   , indexWord32
     -- * Write
+  , writeUtf8
   , writeWord8
   , writeWord16
   , writeWord32
@@ -42,6 +44,8 @@ import Data.Bool.Prim qualified as Bool
 import Data.Buffer.Core (Buffer (..), pointer, throwRangeErrorIO)
 import Data.Buffer.Prim qualified as Prim
 import Data.Buffer.Unsafe qualified as Unsafe
+import Data.Foldable (foldr')
+import Data.Utf8 qualified as Utf8
 import Data.Word (Word16, Word32, Word8)
 
 import GHC.Exts (Int (..))
@@ -68,6 +72,23 @@ allocate size@(I# size#)
 -- | TODO: docs
 --
 -- @since 1.0.0
+fromString :: String -> IO Buffer
+fromString str = do
+  let len = foldr' ((+) . Utf8.lengthUtf8Char) 0 str
+  buffer <- allocate len
+
+  let run :: Int -> String -> IO ()
+      run _ ""       = pure ()
+      run i (c : cs) = do 
+        n <- writeUtf8 buffer i c
+        run (n + i) cs
+   in run 0 str 
+
+  pure buffer
+
+-- | TODO: docs
+--
+-- @since 1.0.0
 shrink :: Buffer -> Int -> IO ()
 shrink buffer n = do
   len <- length buffer
@@ -82,7 +103,7 @@ shrink buffer n = do
 --
 -- @since 1.0.0
 length :: Buffer -> IO Int
-length (B# buffer#) = IO \st0# -> 
+length (B# buffer#) = IO \st0# ->
   case Prim.length# buffer# st0# of
     (# st1#, len# #) -> (# st1#, I# len# #)
 {-# INLINE length #-}
@@ -91,7 +112,7 @@ length (B# buffer#) = IO \st0# ->
 --
 -- @since 1.0.0
 null :: Buffer -> IO Bool
-null (B# buffer#) = IO \st0# -> 
+null (B# buffer#) = IO \st0# ->
   case Prim.null# buffer# st0# of
     (# st1#, x# #) -> (# st1#, Bool.toBool x# #)
 {-# INLINE null #-}
@@ -110,8 +131,8 @@ compareString ::
   Int ->
   -- | TODO: docs
   IO Bool
-compareString buffer str off 
-  | off < 0   = pure False 
+compareString buffer str off
+  | off < 0   = pure False
   | otherwise = do
     len <- length buffer
     let iter :: Int -> String -> IO Bool
@@ -137,8 +158,8 @@ compareStringUtf8 ::
   Int ->
   -- | TODO: docs
   IO Bool
-compareStringUtf8 buffer str off 
-  | off < 0   = pure False 
+compareStringUtf8 buffer str off
+  | off < 0   = pure False
   | otherwise = do
     len <- length buffer
     let iter :: Int -> String -> IO Bool
@@ -210,6 +231,16 @@ indexWord32 buffer i = do
 {-# INLINE indexWord32 #-}
 
 -- Buffer - Write --------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+writeUtf8 :: Buffer -> Int -> Char -> IO Int 
+writeUtf8 buffer i x = do 
+  len <- length buffer
+  if 0 <= i && i < len
+    then Unsafe.writeUtf8 buffer i x
+    else throwRangeErrorIO 'writeWord8 i (len - 1)
 
 -- | TODO: docs
 --

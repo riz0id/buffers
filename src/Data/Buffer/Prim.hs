@@ -36,6 +36,7 @@ module Data.Buffer.Prim
 
     -- * Write 
     writeChar#,
+    writeUtf8#,
     writeWord8#,
     writeWord16#,
     writeWord32#,
@@ -127,6 +128,12 @@ indexWord32# :: Buffer# -> Int# -> State# RealWorld -> (# State# RealWorld, Word
 indexWord32# = coerce GHC.readWord32Array#
 
 -- Buffer# - Write -------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+writeUtf8# :: Buffer# -> Int# -> Char# -> State# RealWorld -> (# State# RealWorld, Int# #)
+writeUtf8# = coerce Utf8.writeUtf8Array# 
 
 -- | TODO: docs
 --
