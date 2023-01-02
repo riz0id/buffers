@@ -4,8 +4,8 @@ mkDerivation {
   version = "1.0.0";
   src = fetchgit {
     url = "https://github.com/riz0id/array-exceptions";
-    sha256 = "0c184s6bkzlb5x1z3xf1ym7fzdalf9whg2s4qjmhiq22wxnvnkb0";
-    rev = "fe015ec267b8744d06b85227702d293fece44625";
+    sha256 = "0j8mlj03rgch7mj1z6cckx3j0cgfd8arf4ma7g01f022r0sz8g42";
+    rev = "cf901d818d66b75e57af4812c860c0df14907ac2";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [ base template-haskell ];

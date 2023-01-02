@@ -6,8 +6,8 @@ mkDerivation {
   version = "1.0.0";
   src = fetchgit {
     url = "https://github.com/riz0id/utf8-text";
-    sha256 = "02zzadwc128wdvxq4w5m6bana92cpsyccvdmgaw7d7psn50axh9s";
-    rev = "9a797a203fee504fcde171d4c2e3e76b87d4b932";
+    sha256 = "0ahhldjm8hafmdmc20x5kyvxabrjb3wbd84alpm8rcdsq36a321z";
+    rev = "3c17d0e6879d5f25f08008d66595191f99b6cb28";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [
