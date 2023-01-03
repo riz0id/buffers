@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      :  Data.Buffer.IO
@@ -18,6 +19,7 @@ module Data.Buffer.IO
   , FileSizeError (..)
     -- * Buffer I/O
   , fromFilePath
+  , hGet
   , hGetBuf
   , hPut
   , hPutBuf
@@ -29,6 +31,7 @@ import Control.Monad (when)
 
 import Data.Buffer (Buffer (..))
 import Data.Buffer qualified as Buffer
+import Data.Buffer.Unsafe qualified as Buffer.Unsafe
 
 import GHC.IO.Handle qualified as GHC
 
@@ -71,25 +74,39 @@ instance Show FileSizeError where
 fromFilePath :: FilePath -> IO Buffer
 fromFilePath filepath = do
   IO.withFile filepath IO.ReadMode \handle -> do
+    -- TODO: docs
     size <- GHC.hFileSize handle
+    assertFileSize size
 
     -- TODO: docs
-    let maxFileSize :: Integer
-        maxFileSize = toInteger (maxBound :: Int)
-     in when (maxFileSize < size) do
-          throwIO (FileSizeError filepath size)
-
-    -- TODO: docs
-    buffer <- Buffer.allocate (fromInteger size)
-
-    -- TODO: docs
-    count <- hGetBuf handle buffer (fromInteger size)
+    let len = fromInteger @Int size
+    buffer <- Buffer.allocate (1 + len)
+    count  <- hGetBuf handle buffer len 
 
     -- TODO: docs
     when (toInteger count < size) do
       Buffer.shrink buffer count
 
+    -- TODO: docs
+    Buffer.Unsafe.writeChar buffer len '\NUL' 
+
     pure buffer
+  where 
+    assertFileSize :: Integer -> IO ()
+    assertFileSize size = 
+      let maxFileSize :: Integer 
+          maxFileSize = toInteger (maxBound :: Int)
+       in when (maxFileSize <= 1 + size) do 
+            throwIO (FileSizeError filepath size)
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+hGet :: Handle -> Buffer -> IO Int
+hGet handle buffer = do 
+  let ptr = Buffer.pointer buffer 
+  len <- Buffer.length buffer
+  IO.hGetBuf handle ptr len
 
 -- | TODO: docs
 --

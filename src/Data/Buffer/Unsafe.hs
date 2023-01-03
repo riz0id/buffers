@@ -23,6 +23,7 @@ module Data.Buffer.Unsafe
   , indexWord16
   , indexWord32
     -- * Write
+  , writeChar
   , writeUtf8
   , writeWord8
   , writeWord16
@@ -101,6 +102,14 @@ indexWord32 (B# buffer#) (I# i#) = IO \st0# ->
 {-# INLINE indexWord32 #-}
 
 -- Write -----------------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+writeChar :: Buffer -> Int -> Char -> IO ()
+writeChar (B# buffer#) (I# i#) (C# x#) = IO \st# -> 
+  (# Prim.writeChar# buffer# i# x# st#, () #)
+{-# INLINE writeChar #-}
 
 -- | TODO: docs
 --

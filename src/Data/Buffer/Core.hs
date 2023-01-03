@@ -39,7 +39,7 @@ data Buffer = B# Buffer#
 
 -- | @since 1.0.0
 instance Show Buffer where
-  show x = "<Buffer: " ++ show (pointer x) ++ show ">"
+  show x = "<Buffer: " ++ show (pointer x) ++ ">"
   {-# INLINE show #-}
 
   showsPrec _ x = showString "<Buffer: " . shows (pointer x) . showString ">"
