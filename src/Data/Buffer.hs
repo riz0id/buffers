@@ -88,7 +88,7 @@ fromString str = do
 -- @since 1.0.0
 grow :: Buffer -> Int -> IO Buffer
 grow buffer count =
-  case compare 0 count of
+  case compare count 0 of
     GT -> Unsafe.grow buffer count
     EQ -> pure buffer
     LT -> errorWithoutStackTrace ("grow: argument #2 must be a 'Int' greater than or equal to 0, got: " ++ show count) -- FIXME: canonicalize this error
