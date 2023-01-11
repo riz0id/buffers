@@ -41,6 +41,8 @@ module Data.Buffer
   , writeWord8
   , writeWord16
   , writeWord32
+    -- * Fill
+  , fillWord8
   ) where
 
 import Control.Exception (throwIO)
