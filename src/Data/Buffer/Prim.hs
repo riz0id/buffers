@@ -2,6 +2,8 @@
 {-# LANGUAGE UnliftedNewtypes #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE BangPatterns #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Data.Buffer.Prim
@@ -20,6 +22,8 @@ module Data.Buffer.Prim
 
     -- * Basic Operations
     allocate#,
+    copy#,
+    grow#,
     shrink#,
 
     -- * Query
@@ -67,6 +71,21 @@ newtype Buffer# :: UnliftedType where
 -- @since 1.0.0
 allocate# :: Int# -> State# RealWorld -> (# State# RealWorld, Buffer# #)
 allocate# = coerce GHC.newPinnedByteArray# 
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+copy# :: Buffer# -> Int# -> Buffer# -> Int# -> Int# -> State# RealWorld -> State# RealWorld 
+copy# = coerce GHC.copyMutableByteArray# 
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+grow# :: Buffer# -> Int# -> State# RealWorld -> (# State# RealWorld, Buffer# #)
+grow# src# count# st0# = 
+  let !(# st1#, len# #) = length# src# st0#
+      !(# st2#, dst# #) = allocate# (count# GHC.+# len#) st1#
+   in (# copy# src# 0# dst# 0# len# st2#, dst# #)
 
 -- | TODO: docs
 --

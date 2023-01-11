@@ -1,5 +1,7 @@
 {-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Data.Slice
@@ -24,7 +26,8 @@ module Data.Slice
   ) where
 
 import Control.Exception (throwIO)
-import Control.Exception.RangeError (RangeError (..), RangePrefix (..))
+import Control.Exception.RangeError
+  (pattern EndingRangeError, pattern StartingRangeError)
 import Control.Monad (unless, (>=>))
 
 import Data.Buffer qualified as Buffer
@@ -35,8 +38,9 @@ import Data.Primitive.ByteArray
   ( ByteArray
   , MutableByteArray (MutableByteArray)
   , copyMutableByteArray
+  , fillByteArray
   , newPinnedByteArray
-  , unsafeFreezeByteArray, fillByteArray
+  , unsafeFreezeByteArray
   )
 import Data.Slice.Core (Slice (..))
 
@@ -61,14 +65,14 @@ slice ::
   -- | TODO: docs
   IO Slice
 slice buffer off n = do
-  len <- Buffer.length buffer
   let end = off + n
+  len <- Buffer.length buffer
 
   unless (0 <= off && off < len) do
-    throwIO (RangeError 'slice ''Buffer (Just PrefixStarting) off 0 len)
+    throwIO (StartingRangeError 'slice ''Buffer off 0 len)
 
   unless (0 <= end && end < len) do
-    throwIO (RangeError 'slice ''Buffer (Just PrefixEnding) end 0 len)
+    throwIO (EndingRangeError 'slice ''Buffer end 0 len)
 
   -- FIXME: assert that (off < off + n)
 
@@ -78,7 +82,7 @@ slice buffer off n = do
 --
 -- @since 1.0.0
 toByteArray :: Slice -> IO ByteArray
-toByteArray = toMutableByteArray >=> unsafeFreezeByteArray 
+toByteArray = toMutableByteArray >=> unsafeFreezeByteArray
 
 -- | TODO: docs
 --

@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Data.Buffer.Core

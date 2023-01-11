@@ -1,6 +1,7 @@
 {-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE UnboxedTuples         #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Data.Buffer
@@ -19,6 +20,7 @@ module Data.Buffer
     -- * Basic Operations
   , allocate
   , fromString
+  , grow
   , shrink
     -- * Query
   , length
@@ -59,14 +61,9 @@ import Prelude hiding (length, null)
 --
 -- @since 1.0.0
 allocate :: Int -> IO Buffer
-allocate size@(I# size#)
-  | 0 <= size = do
-    IO \st0# -> case Prim.allocate# size# st0# of
-      (# st1#, buffer# #) -> (# st1#, B# buffer# #)
-  | otherwise = do
-    -- FIXME: canonicalize this error
-    let desc = "allocate: argument #1 must be a 'Int' greater than or equal to 0, got: " ++ show size
-    errorWithoutStackTrace desc
+allocate count
+  | 0 <= count = Unsafe.allocate count
+  | otherwise  = errorWithoutStackTrace ("allocate: argument #1 must be a 'Int' greater than or equal to 0, got: " ++ show count) -- FIXME: canonicalize this error
 {-# INLINE allocate #-}
 
 -- | TODO: docs
@@ -79,12 +76,23 @@ fromString str = do
 
   let run :: Int -> String -> IO ()
       run _ ""       = pure ()
-      run i (c : cs) = do 
+      run i (c : cs) = do
         n <- writeUtf8 buffer i c
         run (n + i) cs
-   in run 0 str 
+   in run 0 str
 
   pure buffer
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+grow :: Buffer -> Int -> IO Buffer
+grow buffer count =
+  case compare 0 count of
+    GT -> Unsafe.grow buffer count
+    EQ -> pure buffer
+    LT -> errorWithoutStackTrace ("grow: argument #2 must be a 'Int' greater than or equal to 0, got: " ++ show count) -- FIXME: canonicalize this error
+{-# INLINE grow #-}
 
 -- | TODO: docs
 --
@@ -235,8 +243,8 @@ indexWord32 buffer i = do
 -- | TODO: docs
 --
 -- @since 1.0.0
-writeUtf8 :: Buffer -> Int -> Char -> IO Int 
-writeUtf8 buffer i x = do 
+writeUtf8 :: Buffer -> Int -> Char -> IO Int
+writeUtf8 buffer i x = do
   len <- length buffer
   if 0 <= i && i < len
     then Unsafe.writeUtf8 buffer i x

@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Data.Buffer.IO
@@ -104,9 +105,8 @@ fromFilePath filepath = do
 -- @since 1.0.0
 hGet :: Handle -> Buffer -> IO Int
 hGet handle buffer = do 
-  let ptr = Buffer.pointer buffer 
   len <- Buffer.length buffer
-  IO.hGetBuf handle ptr len
+  IO.hGetBuf handle (Buffer.pointer buffer) len
 
 -- | TODO: docs
 --

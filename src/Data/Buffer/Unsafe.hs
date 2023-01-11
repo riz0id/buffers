@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash     #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 -- Module      :  Data.Buffer.Unsafe
@@ -15,7 +16,10 @@
 -- @since 1.0.0
 module Data.Buffer.Unsafe
   ( -- * Basic Operations
-    shrink
+    allocate
+  , copy
+  , grow
+  , shrink
     -- * Index
   , indexChar
   , indexUtf8
@@ -42,6 +46,32 @@ import GHC.Word (Word16 (..), Word32 (..), Word8 (..))
 
 
 -- Basic Operations ------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+allocate :: Int -> IO Buffer
+allocate (I# count#) = IO \st0# -> 
+  case Prim.allocate# count# st0# of 
+    (# st1#, buffer# #) -> (# st1#, B# buffer# #)
+{-# INLINE allocate #-}
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+copy :: Buffer -> Int -> Buffer -> Int -> Int -> IO ()
+copy (B# src#) (I# i0#) (B# dst#) (I# i1#) (I# len#) = 
+  IO \st# -> (# Prim.copy# src# i0# dst# i1# len# st#, () #)
+{-# INLINE copy #-}
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+grow :: Buffer -> Int -> IO Buffer
+grow (B# buffer0#) (I# count#) = 
+  IO \st0# -> case Prim.grow# buffer0# count# st0# of 
+    (# st1#, buffer1# #) -> (# st1#, B# buffer1# #)
+{-# INLINE grow #-}
 
 -- | TODO: docs
 --
