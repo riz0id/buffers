@@ -32,6 +32,8 @@ module Data.Buffer.Unsafe
   , writeWord8
   , writeWord16
   , writeWord32
+    -- * Fill
+  , fillWord8
   ) where
 
 
@@ -174,3 +176,12 @@ writeWord32 (B# buffer#) (I# i#) (W32# x#) = IO \st# ->
   (# Prim.writeWord32# buffer# i# x# st#, () #)
 {-# INLINE writeWord32 #-}
 
+-- Fill ------------------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+fillWord8 :: Buffer -> Int -> Int -> Word8 -> IO ()
+fillWord8 (B# buffer#) (I# offset#) (I# count#) (W8# x#) = IO \st# ->
+  (# Prim.fillWord8# buffer# offset# count# x# st#, () #)
+{-# INLINE fillWord8 #-}

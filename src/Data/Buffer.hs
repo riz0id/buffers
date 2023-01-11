@@ -1,4 +1,5 @@
 {-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE UnboxedTuples         #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
@@ -41,6 +42,11 @@ module Data.Buffer
   , writeWord16
   , writeWord32
   ) where
+
+import Control.Exception (throwIO)
+import Control.Exception.RangeError
+  (pattern EndingRangeError, pattern StartingRangeError)
+import Control.Monad (unless)
 
 import Data.Bool.Prim qualified as Bool
 import Data.Buffer.Core (Buffer (..), pointer, throwRangeErrorIO)
@@ -283,3 +289,20 @@ writeWord32 buffer i x = do
     else throwRangeErrorIO 'writeWord32 i (len - 4)
 {-# INLINE writeWord32 #-}
 
+-- Buffer - Fill ---------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+fillWord8 :: Buffer -> Int -> Int -> Word8 -> IO ()
+fillWord8 buffer offset count x = do
+  let end = offset + count
+  len <- length buffer
+
+  unless (0 <= offset && offset < len) do
+    throwIO (StartingRangeError 'fillWord8 ''Buffer offset 0 len)
+
+  unless (0 <= end && end < len) do
+    throwIO (EndingRangeError 'fillWord8 ''Buffer end 0 len)
+
+  Unsafe.fillWord8 buffer offset count x
