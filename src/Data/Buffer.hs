@@ -205,11 +205,11 @@ indexChar buffer i = do
 -- | TODO: docs
 --
 -- @since 1.0.0
-indexUtf8 :: Buffer -> Int -> IO Char
+indexUtf8 :: Buffer -> Int -> IO (Char, Int)
 indexUtf8 buffer i = do
   len <- length buffer
   if 0 <= i && i < len
-    then fmap fst (Unsafe.indexUtf8 buffer i)
+    then Unsafe.indexUtf8 buffer i
     else throwRangeErrorIO 'indexUtf8 i (len - 1)
 {-# INLINE indexUtf8 #-}
 

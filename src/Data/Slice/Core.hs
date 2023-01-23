@@ -27,4 +27,4 @@ data Slice = Slice
   , slice_begin  :: {-# UNPACK #-} !Int
   , slice_end    :: {-# UNPACK #-} !Int
   }
-
+  deriving (Show)

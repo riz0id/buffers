@@ -23,6 +23,9 @@ module Data.Slice
   , toMutableByteArray
     -- * Query
   , length
+  , null
+    -- * Slicing
+  , takeWhileUtf8
   ) where
 
 import Control.Exception (throwIO)
@@ -31,8 +34,9 @@ import Control.Exception.RangeError
 import Control.Monad (unless, (>=>))
 
 import Data.Buffer qualified as Buffer
-import Data.Buffer.Core (Buffer (..))
+import Data.Buffer.Core (Buffer (..), throwRangeErrorIO)
 import Data.Buffer.Prim (Buffer# (..))
+import Data.Buffer.Unsafe qualified as Buffer.Unsafe
 import Data.Coerce (coerce)
 import Data.Primitive.ByteArray
   ( ByteArray
@@ -46,7 +50,7 @@ import Data.Slice.Core (Slice (..))
 
 import GHC.Exts (RealWorld)
 
-import Prelude hiding (length)
+import Prelude hiding (null, length)
 
 --------------------------------------------------------------------------------
 
@@ -107,3 +111,40 @@ toMutableByteArray slx = do
 -- @since 1.0.0
 length :: Slice -> Int
 length slx = slice_end slx - slice_begin slx
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+null :: Slice -> Bool
+null slx = length slx == 0 
+
+-- Slice - Slicing -------------------------------------------------------------
+
+-- | TODO: docs
+--
+-- @since 1.0.0
+takeWhileUtf8 :: 
+  -- | TODO: docs
+  (Char -> Bool) -> 
+  -- | TODO: docs
+  Buffer -> 
+  -- | TODO: docs
+  Int -> 
+  -- | TODO: docs
+  IO Slice
+takeWhileUtf8 match buffer begin = do 
+  len <- Buffer.length buffer
+  if 0 <= begin && begin < len
+    then 
+      let run :: Int -> IO Int
+          run i 
+            | i < len = do 
+              (char, n) <- Buffer.Unsafe.indexUtf8 buffer i
+              if match char 
+                then run (n + i)
+                else pure i
+            | otherwise = 
+              pure i
+       in fmap (Slice buffer begin) (run begin)
+    else do 
+      throwRangeErrorIO 'takeWhileUtf8 begin (len - 1)
