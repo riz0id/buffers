@@ -1,5 +1,4 @@
 {-# LANGUAGE MagicHash             #-}
-{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 

@@ -20,15 +20,23 @@ module Data.Buffer.IO
   , FileSizeError (..)
     -- * Buffer I/O
   , fromFilePath
+    -- ** Read
   , hGet
   , hGetBuf
+    -- ** Write
+  , putBuffer
   , hPut
   , hPutBuf
   ) where
 
 import Control.Exception (Exception, throwIO)
+import Control.Exception.RangeError 
+  ( RangeError(..)
+  , pattern EndingRangeError
+  , pattern StartingRangeError
+  )
 
-import Control.Monad (when)
+import Control.Monad (when, unless)
 
 import Data.Buffer (Buffer (..))
 import Data.Buffer qualified as Buffer
@@ -38,7 +46,7 @@ import GHC.IO.Handle qualified as GHC
 
 import System.IO qualified as IO
 import System.IO (Handle)
-import Control.Exception.RangeError (RangeError(..))
+import qualified Foreign.Ptr as Ptr
 
 -- Exceptions ------------------------------------------------------------------
 
@@ -100,6 +108,8 @@ fromFilePath filepath = do
        in when (maxFileSize <= 1 + size) do 
             throwIO (FileSizeError filepath size)
 
+-- Buffer I/O - Read -----------------------------------------------------------
+
 -- | TODO: docs
 --
 -- @since 1.0.0
@@ -108,50 +118,89 @@ hGet handle buffer = do
   len <- Buffer.length buffer
   IO.hGetBuf handle (Buffer.pointer buffer) len
 
--- | TODO: docs
+-- | \(\mathcal{O}(1)\). The function @('hGetBuf' src dst n :: 'IO' 'Int')@ 
+-- reads data from the 'Handle' @src@ into the 'Buffer' @dst@ until either:
+--
+--   * The @('\NUL' :: 'Char')@ terminator is reached. In this case, 'hGetBuf' 
+--     will return some 'Int' greater-than or equal-to zero, but less than @n@. 
+--
+--   * Exactly @n@-many bytes have been read from @src@ into the target buffer 
+--     @dst@. In this case, 'hGetBuf' will return an 'Int' equal-to @n@.
+--
+-- __NOTE__: This function performs bounds-checking.
 --
 -- @since 1.0.0
 hGetBuf :: 
-  -- | TODO: docs
+  -- | The source 'Handle'. 
   Handle -> 
-  -- | TODO: docs
+  -- | The destination 'Buffer'.
   Buffer -> 
-  -- | TODO: docs
+  -- | The maximum number of bytes to read. Must be greater-than or equal-to 
+  -- @(0 :: Int)@ and less-than the length of the target 'Buffer'.
   Int -> 
-  -- | TODO: docs
+  -- | The number of bytes read into the destination 'Buffer'. 
   IO Int
-hGetBuf handle buffer count = do 
+hGetBuf handle buffer n = do 
   len <- Buffer.length buffer 
-  if 0 <= count && count <= len 
-    then IO.hGetBuf handle (Buffer.pointer buffer) count
-    else throwIO (RangeError 'hGetBuf ''Buffer Nothing count 0 len)
+  if 0 <= n && n <= len 
+    then IO.hGetBuf handle (Buffer.pointer buffer) n
+    else throwIO (RangeError 'hGetBuf ''Buffer Nothing n 0 len)
 
--- | TODO: docs
+-- Buffer I/O - Write ----------------------------------------------------------
+
+-- | \(\mathcal{O}(1)\). Write the contents of the 'Buffer' to 'IO.stdout'
 --
 -- @since 1.0.0
-hPut :: Handle -> Buffer -> IO ()
+putBuffer :: Buffer -> IO ()
+putBuffer = hPut IO.stdout
+{-# INLINEABLE putBuffer #-}
+
+-- | \(\mathcal{O}(1)\). The function @('hPut' dst src :: 'IO' ())@ writes the
+-- entire contents of the 'Buffer' @src@ to the file 'Handle' @dst@.
+--
+-- @since 1.0.0
+hPut :: 
+  -- | The destination 'Handle'. 
+  Handle -> 
+  -- | The source 'Buffer'. 
+  Buffer -> 
+  IO ()
 hPut handle buffer = do
   let ptr = Buffer.pointer buffer 
   len <- Buffer.length buffer
   IO.hPutBuf handle ptr len
+{-# INLINEABLE hPut #-}
 
--- | TODO: docs
+-- | \(\mathcal{O}(1)\). The function @('hPutBuf' dst src offset n :: 'IO' ())@ 
+-- writes the contents of the 'Buffer' @src@ to the file 'Handle' @dst@.
+--
+-- __NOTE__: This function performs bounds-checking.
 --
 -- @since 1.0.0
 hPutBuf :: 
-  -- | TODO: docs
+  -- | The destination 'Handle'. 
   Handle -> 
-  -- | TODO: docs
+  -- | The source 'Buffer'. 
   Buffer -> 
-  -- | TODO: docs
+  -- | The beginning offset, in bytes. Must be greater-than or equal-to 
+  -- @(0 :: Int)@ and less-than or equal-to the length of the buffer.
   Int -> 
-  -- | TODO: docs
+  -- | The length of the region to fill, in bytes. Must be greater-than or equal 
+  -- to @(0 :: Int)@ and less-than or equal-to the length of the buffer.
+  Int -> 
   IO ()
-hPutBuf handle buffer count = do 
-  len <- Buffer.length buffer 
-  if 0 <= count && count <= len 
-    then IO.hPutBuf handle (Buffer.pointer buffer) count
-    else throwIO (RangeError 'hGetBuf ''Buffer Nothing count 0 len)
+hPutBuf dst src offset n = do 
+  let ptr = Ptr.plusPtr (Buffer.pointer src) offset
+  len <- Buffer.length src 
+
+  unless (0 <= offset && offset <= len) do 
+    throwIO (StartingRangeError 'hPutBuf ''Buffer offset 0 len)
+
+  unless (0 <= n && n <= len - offset) do
+    throwIO (EndingRangeError 'hPutBuf ''Buffer n 0 (len - offset))
+
+  IO.hPutBuf dst ptr n
+{-# INLINEABLE hPutBuf #-}
 
 
 

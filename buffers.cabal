@@ -27,7 +27,8 @@ common common
 
   default-extensions:
     BlockArguments DeriveDataTypeable DeriveGeneric DeriveLift GADTs 
-    ImportQualifiedPost KindSignatures RankNTypes StandaloneKindSignatures
+    ImportQualifiedPost KindSignatures PatternSynonyms RankNTypes
+    StandaloneKindSignatures
 
   ghc-options:
     -Wall

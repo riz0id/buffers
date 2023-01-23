@@ -293,18 +293,30 @@ writeWord32 buffer i x = do
 
 -- Buffer - Fill ---------------------------------------------------------------
 
--- | TODO: docs
+-- | \(\mathcal{O}(1)\). Sets all bytes in specified range to a 'Word8' value.
+--
+-- __Note:__ This function is bounds-checked.
 --
 -- @since 1.0.0
-fillWord8 :: Buffer -> Int -> Int -> Word8 -> IO ()
+fillWord8 :: 
+  -- | The target 'Buffer'.
+  Buffer -> 
+  -- | The beginning offset, in bytes. Must be greater-than or equal-to 
+  -- @(0 :: Int)@ and less-than or equal-to the length of the buffer.
+  Int -> 
+  -- | The length of the region to fill, in bytes. Must be greater-than or equal 
+  -- to @(0 :: Int)@ and less-than or equal-to the length of the buffer.
+  Int -> 
+  -- | The byte to fill in the specified range.
+  Word8 -> 
+  IO ()
 fillWord8 buffer offset count x = do
-  let end = offset + count
   len <- length buffer
 
-  unless (0 <= offset && offset < len) do
+  unless (0 <= offset && offset <= len) do
     throwIO (StartingRangeError 'fillWord8 ''Buffer offset 0 len)
-
-  unless (0 <= end && end < len) do
-    throwIO (EndingRangeError 'fillWord8 ''Buffer end 0 len)
+  
+  unless (0 <= count && count <= len - offset) do
+    throwIO (EndingRangeError 'fillWord8 ''Buffer len 0 (len - offset))
 
   Unsafe.fillWord8 buffer offset count x
