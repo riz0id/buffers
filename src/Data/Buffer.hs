@@ -198,7 +198,7 @@ indexChar :: Buffer -> Int -> IO Char
 indexChar buffer i = do
   len <- length buffer
   if 0 <= i && i < len
-    then Unsafe.indexChar buffer i
+    then Unsafe.indexChar8 buffer i
     else throwRangeErrorIO 'indexChar i (len - 1)
 {-# INLINE indexChar #-}
 

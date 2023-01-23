@@ -21,7 +21,7 @@ module Data.Buffer.Unsafe
   , grow
   , shrink
     -- * Index
-  , indexChar
+  , indexChar8
   , indexUtf8
   , indexWord8
   , indexWord16
@@ -91,11 +91,11 @@ shrink (B# buffer#) (I# i#) = IO \st# -> (# Prim.shrink# buffer# i# st#, () #)
 -- | TODO: docs
 --
 -- @since 1.0.0
-indexChar :: Buffer -> Int -> IO Char
-indexChar (B# buffer#) (I# i#) = IO \st0# -> 
-  case Prim.indexChar# buffer# i# st0# of 
+indexChar8 :: Buffer -> Int -> IO Char
+indexChar8 (B# buffer#) (I# i#) = IO \st0# -> 
+  case Prim.indexChar8# buffer# i# st0# of 
     (# st1#, x# #) -> (# st1#, C# x# #)
-{-# INLINE indexChar #-}
+{-# INLINE indexChar8 #-}
 
 -- | TODO: docs
 --

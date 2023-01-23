@@ -32,7 +32,7 @@ module Data.Buffer.Prim
     pointer#,
 
     -- * Index
-    indexChar#,
+    indexChar8#,
     indexUtf8#,
     indexWord8#,
     indexWord16#,
@@ -122,8 +122,8 @@ pointer# = coerce GHC.mutableByteArrayContents#
 -- | TODO: docs
 --
 -- @since 1.0.0
-indexChar# :: Buffer# -> Int# -> State# RealWorld -> (# State# RealWorld, Char# #)
-indexChar# = coerce GHC.readCharArray#
+indexChar8# :: Buffer# -> Int# -> State# RealWorld -> (# State# RealWorld, Char# #)
+indexChar8# = coerce GHC.readCharArray#
 
 -- | TODO: docs
 --
